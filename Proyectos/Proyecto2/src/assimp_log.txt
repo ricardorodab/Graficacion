@@ -1,0 +1,10 @@
+Info,  T0: Load ../resources/avioneta.obj
+Info,  T0: Found a matching importer for this file format
+Info,  T0: Import root directory is '../resources/'
+Info,  T0: Entering post processing pipeline
+Info,  T0: RemoveRedundantMatsProcess finished. Removed 1 redundant and 1 unused materials.
+Info,  T0: Points: 0, Lines: 0, Triangles: 11, Polygons: 0 (Meshes, X = removed)
+Info,  T0: CalcTangentsProcess finished. Tangents have been calculated
+Info,  T0: JoinVerticesProcess finished | Verts in: 310596 out: 297469 | ~4.2%
+Info,  T0: Cache relevant are 11 meshes (103532 faces). Average output ACMR is 2.873295
+Info,  T0: Leaving post processing pipeline
