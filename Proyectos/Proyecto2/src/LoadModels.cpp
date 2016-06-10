@@ -1,3 +1,31 @@
+/* -------------------------------------------------------------------
+ * LoadModels.cpp
+ * versión 1.0
+ * Copyright (C) 2016 
+ * José Ricardo Rodríguez Abreu,
+ * Facultad de Ciencias,
+ * Universidad Nacional Autónoma de México, Mexico.
+ *
+ * Este programa es software libre; se puede redistribuir
+ * y/o modificar en los términos establecidos por la
+ * Licencia Pública General de GNU tal como fue publicada
+ * por la Free Software Foundation en la versión 2 o
+ * superior.
+ *
+ * Este programa es distribuido con la esperanza de que
+ * resulte de utilidad, pero SIN GARANTÍA ALGUNA; de hecho
+ * sin la garantía implícita de COMERCIALIZACIÓN o
+ * ADECUACIÓN PARA PROPÓSITOS PARTICULARES. Véase la
+ * Licencia Pública General de GNU para mayores detalles.
+ *
+ * Con este programa se debe haber recibido una copia de la
+ * Licencia Pública General de GNU, de no ser así, visite el
+ * siguiente URL:
+ * http://www.gnu.org/licenses/gpl.html
+ * o escriba a la Free Software Foundation Inc.,
+ * 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+ * -------------------------------------------------------------------
+ */
 #include <cstdlib>
 #include <stdio.h>
 #include <iostream>
@@ -24,27 +52,26 @@
 #include "getbmp.h"
 #include <fstream>
 
-//A partir de aquí todo se necesita:
 /* Variables globales*/
 const struct aiScene* scene = NULL;
 GLuint scene_list = 0;
-// images / texture
-// map image filenames to textureIds
-std::map<std::string, GLuint*> textureIdMap;	
+// imagenes / texturas
+// mapea archivos de imagenes a las texturas.
+std::map<std::string, GLuint*> textureIdMap;
+//Un apuntador al arreglo de las texturas.
 GLuint* textureIds;
-// pointer to texture Array
-
-// Create an instance of the Importer class
+// Creamos una instancia de una clase para importar al objeto.
 Assimp::Importer importer;
-
+//Son los archivos de entrada por default.
 static std::string basepath = "../resources/";
 static std::string modelname = "avioneta.obj";
-
+// Estos arreglos nos ayudan a darle luz a cada textura:
 GLfloat LightAmbient[]= { 0.5f, 0.5f, 0.5f, 1.0f };
 GLfloat LightDiffuse[]= { 1.0f, 1.0f, 1.0f, 1.0f };
 GLfloat LightPosition[]= { 0.0f, 0.0f, 15.0f, 1.0f };
+// Estos vectores nos dan las posiciones de la escena actual.
 aiVector3D scene_min, scene_max, scene_center;
-//rotación
+//Con esto podemos generar la rotación del modelo.
 static float anguloL = 0.5;
 static float anguloC = 0.5;
 static float anguloA = 0.5;
@@ -52,24 +79,29 @@ static float movimiento = 0.f;
 static float moveW = 0.f;
 static float escala = 1.5f;
 static int mueve = 1, cambioW = 0;
-// Textura
-static unsigned int texture[2]; // Array of texture indices.
-static float d = 0.0; // Distance parameter in gluLookAt().
+//Un arreglo para los índices de las texturas.
+static unsigned int texture[2];
+//Un flotante para la distancia que recibe adelante el parámetro gluLookAt()
+static float d = 0.0;
 #define aisgl_min(x,y) (x<y?x:y)
 #define aisgl_max(x,y) (y>x?y:x)
 
 
-// Load external textures.
+/**
+ *----------------------------------------------------------------------------
+ * Carga las texturas externas al modelo.
+ *----------------------------------------------------------------------------
+ */
 void loadExternalTextures()
 {
-  // Local storage for bmp image data.
+  // Guarda los datos de la imagen bmp en este arreglo.
   BitMapFile *image[2];
   
-  // Load the images.
+  //Cargamos las imagenes.
   image[0] = getbmp("../resources/grass.bmp");
   image[1] = getbmp("../resources/sky.bmp");
-  
-  // Bind grass image to texture object texture[0]. 
+
+  // Unimos las texturas de las imagenes con el objeto que simula el pasto en el texture[0]
   glBindTexture(GL_TEXTURE_2D, texture[0]);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image[0]->sizeX, image[0]->sizeY, 0,
 	       GL_RGBA, GL_UNSIGNED_BYTE, image[0]->data);
@@ -77,8 +109,8 @@ void loadExternalTextures()
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  
-  // Bind sky image to texture object texture[1]
+
+  //Unimos las texturas de las imagenes con el objeto que sumula el cierlo en el texture[1]
   glBindTexture(GL_TEXTURE_2D, texture[1]);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, image[1]->sizeX, image[1]->sizeY, 0,
 	       GL_RGBA, GL_UNSIGNED_BYTE, image[1]->data);
@@ -88,39 +120,55 @@ void loadExternalTextures()
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 }
 
+/**
+ *----------------------------------------------------------------------------
+ * Función que inicializa todos los atributos de openGL.
+ *----------------------------------------------------------------------------
+ */
 void setup(void)
 {
   glClearColor(0.0, 0.0, 0.0, 0.0);
   glEnable(GL_DEPTH_TEST);
   
-  // Create texture ids.
+  // Creamos los id de las texturas (2)
   glGenTextures(2, texture);
   
-  // Load external textures.
+  // Cargamos las texturas.
   loadExternalTextures();
-  
-  // Specify how texture values combine with current surface color values.
+
+  // Aquí especificamos como las texturas son combinadas con los colores.
   glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_REPLACE);
-  
-  // Turn on OpenGL texturing.
+
+  // Enciende las texturas de openGL
   glEnable(GL_TEXTURE_2D);
   
-  // Cull back faces.
+  // Aquí activamos esto para evitar gasto de recursos.
   glEnable(GL_CULL_FACE);
   glCullFace(GL_BACK);
 }
 
+/**
+ *----------------------------------------------------------------------------
+ * Función que rota un objeto cada cierto tiempo. (DESACTIVADA)
+ *----------------------------------------------------------------------------
+ */
 void rota_objeto (void)
 {
   static GLint prev_time = 0;
   
   int time = glutGet(GLUT_ELAPSED_TIME);
+  //Si la siguiente linea está comentada, la función no sirve de nada. (Desactivada)
   //angulo += (time-prev_time)*0.01;
   prev_time = time;
   
   glutPostRedisplay ();
 }
 
+/**
+ *----------------------------------------------------------------------------
+ * Función que mueve un objeto cada cierto tiempo por un cierto rango.
+ *----------------------------------------------------------------------------
+ */
 void mueve_objeto (void)
 {
   if(movimiento > 3.5)
@@ -134,7 +182,12 @@ void mueve_objeto (void)
 }
 
 
-/**/
+/**
+ *----------------------------------------------------------------------------
+ * En la estructa de datos que usamos para los vértices y las caras, en esta función
+ * se conectan los nodos con un cluster de dicha estructura.
+ *----------------------------------------------------------------------------
+ */
 void get_bounding_box_for_node(const aiNode* nd, aiVector3D* min, aiVector3D* max, aiMatrix4x4* trafo)
 {
   aiMatrix4x4 prev;
@@ -166,7 +219,11 @@ void get_bounding_box_for_node(const aiNode* nd, aiVector3D* min, aiVector3D* ma
   *trafo = prev;
 }
 
-/* ---------------------------------------------------------------------------- */
+/**
+ *----------------------------------------------------------------------------
+ * Lo que esto hace es crea un nuevo cluster en la estructura que usamos.
+ *----------------------------------------------------------------------------
+ */
 void get_bounding_box(aiVector3D* min, aiVector3D* max)
 {
   aiMatrix4x4 trafo;
@@ -177,12 +234,21 @@ void get_bounding_box(aiVector3D* min, aiVector3D* max)
   get_bounding_box_for_node(scene->mRootNode, min, max, &trafo);
 }
 
+/**
+ *----------------------------------------------------------------------------
+ * Colorea en openGL con la función glColor4f
+ *----------------------------------------------------------------------------
+ */
 void Color4f(const aiColor4D *color)
 {
   glColor4f(color->r,color->g,color->b,color->a);
 }
 
-/* ---------------------------------------------------------------------------- */
+/**
+ *----------------------------------------------------------------------------
+ * Hace un "cast" de color a un arreglo que se le pase.
+ *----------------------------------------------------------------------------
+ */
 void color4_to_float4(const aiColor4D *c, float f[4])
 {
   f[0] = c->r;
@@ -191,7 +257,11 @@ void color4_to_float4(const aiColor4D *c, float f[4])
   f[3] = c->a;
 }
 
-/* ---------------------------------------------------------------------------- */
+/**
+ *----------------------------------------------------------------------------
+ * Se le asigna valores a un arreglo que se le pase.
+ *----------------------------------------------------------------------------
+ */
 void set_float4(float f[4], float a, float b, float c, float d)
 {
   f[0] = a;
@@ -200,24 +270,30 @@ void set_float4(float f[4], float a, float b, float c, float d)
   f[3] = d;
 }
 
-/**/
+/**
+ *----------------------------------------------------------------------------
+ * Esta función es de las 4 más importantes:
+ * 1. CARGA el modelo:
+ * En esta función se carga el modelo. Recibe una cadena que es el url de la imagen.
+ *----------------------------------------------------------------------------
+ */
 bool Import3DFromFile(const std::string& pFile)
 {
   
-  //check if file exists
+  //Revisa si el archivo existe.
   std::ifstream fin(pFile.c_str());
   if (!fin.fail()) {
     fin.close();
   }
   else{
-    printf("Couldn't open file: %s\n", pFile.c_str());
+    printf("No se pudo abrir el archivo: %s\n", pFile.c_str());
     printf("%s\n", importer.GetErrorString());
     return false;
   }
   
   scene = importer.ReadFile(pFile, aiProcessPreset_TargetRealtime_Quality);
-  
-  // If the import failed, report it
+
+  //Si falla el import, se reporta un error del sistema en la terminal
   if (!scene)
     {
       printf("%s\n", importer.GetErrorString());
@@ -229,16 +305,21 @@ bool Import3DFromFile(const std::string& pFile)
   scene_center.x = (scene_min.x + scene_max.x) / 2.0f;
   scene_center.y = (scene_min.y + scene_max.y) / 2.0f;
   scene_center.z = (scene_min.z + scene_max.z) / 2.0f;
-  
-  // Now we can access the file's contents.
-  printf("Import of scene %s succeeded.", pFile.c_str());
-  
-  // We're done. Everything will be cleaned up by the importer destructor
+
+  //Ahora podemos acceder a el contenido del archivo:
+  printf("Se importó exitosamente el archivo %s .", pFile.c_str());
+
   return true;
 }
 
 
-/** */
+/**
+ *----------------------------------------------------------------------------
+ * Esta función es de las 4 más importantes:
+ * 3. Aplicar el material en el modelo:
+ * Esta función le aplica un material de formato mtl a un objeto en 3D.
+ *----------------------------------------------------------------------------
+ */
 void apply_material(const aiMaterial *mtl)
 {
   float c[4];
@@ -252,14 +333,14 @@ void apply_material(const aiMaterial *mtl)
   float shininess, strength;
   int two_sided;
   int wireframe;
-  unsigned int max;	// changed: to unsigned
-  
+  unsigned int max;
   int texIndex = 0;
-  aiString texPath;	//contains filename of texture
+  //Tiene el nombre del archivo de las texturas.
+  aiString texPath;
   
   if(AI_SUCCESS == mtl->GetTexture(aiTextureType_DIFFUSE, texIndex, &texPath))
     {
-      //bind texture
+      //Mapea en openGL las texturas.
       unsigned int texId = *textureIdMap[texPath.data];
       glBindTexture(GL_TEXTURE_2D, texId);
     }
@@ -310,6 +391,14 @@ void apply_material(const aiMaterial *mtl)
     glDisable(GL_CULL_FACE);
 }
 
+
+/**
+ *----------------------------------------------------------------------------
+ * Esta función es de las 4 más importantes:
+ * 2. CARGA el modelo:
+ * Renderiza el modelo recursivamente en la pantalla. Muestra al objeto 3D.
+ *----------------------------------------------------------------------------
+ */
 void recursive_render (const struct aiScene *sc, const struct aiNode* nd, float scale)
 {
   unsigned int i;
@@ -321,7 +410,7 @@ void recursive_render (const struct aiScene *sc, const struct aiNode* nd, float 
     else
       m.Scaling(aiVector3D(scale, scale, scale), m);
   
-  // update transform
+  // Actualiza las transformaciones.
   m.Transpose();
   glPushMatrix();
   glMultMatrixf((float*)&m);
@@ -367,31 +456,31 @@ void recursive_render (const struct aiScene *sc, const struct aiNode* nd, float 
 	  }
 	
 	glBegin(face_mode);
-	
-	for(i = 0; i < face->mNumIndices; i++)		// go through all vertices in face
+
+	//Ahora avanzamos por todos los vértices de las caras
+	for(i = 0; i < face->mNumIndices; i++)		
 	  {
-	    int vertexIndex = face->mIndices[i];	// get group index for current index
+	    int vertexIndex = face->mIndices[i];	
 	    if(mesh->mColors[0] != NULL)
 	      Color4f(&mesh->mColors[0][vertexIndex]);
 	    if(mesh->mNormals != NULL)
-	      
-	      if(mesh->HasTextureCoords(0))		//HasTextureCoords(texture_coordinates_set)
+
+	      //Si tiene texturas en las coordenadas que lo pusimos.
+	      if(mesh->HasTextureCoords(0))  
 		{
-		  glTexCoord2f(mesh->mTextureCoords[0][vertexIndex].x, mesh->mTextureCoords[0][vertexIndex].y); //mTextureCoords[channel][vertex]
+		  //glTexCoord2f(mesh->mTextureCoords[0][vertexIndex].x, mesh->mTextureCoords[0][vertexIndex].y);
+		  glTexCoord2f(mesh->mTextureCoords[0][vertexIndex].x, 1-mesh->mTextureCoords[0][vertexIndex].y);
 		}
 	    
 	    glNormal3fv(&mesh->mNormals[vertexIndex].x);
 	    glVertex3fv(&mesh->mVertices[vertexIndex].x);
+	    
 	  }
-	
-	glEnd();
-	
+	glEnd();	
       }
-      
     }
   
-  
-  // draw all children
+  // Ahora dibuja a todos los hijos de este nodo.
   for (n = 0; n < nd->mNumChildren; ++n)
     {
       recursive_render(sc, nd->mChildren[n], scale);
@@ -401,21 +490,14 @@ void recursive_render (const struct aiScene *sc, const struct aiNode* nd, float 
 }
 
 
-/** */
+/**
+ *----------------------------------------------------------------------------
+ * Función para mostrar en pantalla el modelo ya cargando las texturas.
+ *----------------------------------------------------------------------------
+ */
 void display()
 {
-  //Merge
-  
-  // Comentada este ultimo intento:
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  
-  //glLoadIdentity();
-  //gluLookAt(0.0, 10.0, 15.0 + d, 0.0, 10.0, d, 0.0, 1.0, 0.0);
-  
-  // Map the grass texture onto a rectangle along the xz-plane.
-  //Aquí quité el código
-  //glutSwapBuffers();
-  //Merge
   
   float tmp;
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -423,8 +505,8 @@ void display()
   glLoadIdentity();
   
   gluLookAt(0.0f, 0.0f, 3.0f, 0.0f, 0.0f,- 5.0f, 0.0f, 1.0f, 0.0f);
-  //Aquí inserto el código.
-  //Map the grass texture onto a rectangle along the xz-plane. 
+
+  //Mapea el pasto en una figura rectangular en el xz-plano.
   glBindTexture(GL_TEXTURE_2D, texture[0]);
   glBegin(GL_POLYGON);
   glTexCoord2f(0.0, 0.0); glVertex3f(-100.0, -4.0, 50.0);
@@ -432,8 +514,8 @@ void display()
   glTexCoord2f(8.0, 8.0); glVertex3f(100.0, -4.0, -10.0);
   glTexCoord2f(0.0, 8.0); glVertex3f(-100.0, -4.0, -10.0);
   glEnd();
-  
-  // Map the sky texture onto a rectangle parallel to the xy-plane.
+
+  //Mapea el cielo en una figura rectangular en el xy-plano.
   glBindTexture(GL_TEXTURE_2D, texture[1]);
   glBegin(GL_POLYGON);
   glTexCoord2f(0.0, 0.0); glVertex3f(-100.0, -25.0, -70.0);
@@ -442,14 +524,12 @@ void display()
   glTexCoord2f(0.0, 1.0); glVertex3f(-100.0, 120.0, -70.0);
   glEnd();
   
-  //Aquí termina el codigo que inserté
-  //Rotación alrededor del y
-  //glRotatef(anguloL,0.f,1.f,0.f);
+  //Rotaciones en distintos angúlos del modelo.
   glRotatef(anguloL,0.f,1.f,0.f);
   glRotatef(anguloC,0.f,0.f,1.f);
   glRotatef(anguloA,1.f,0.f,0.f);
-  //Translación del objeto en x.
-  // Comentada este ultimo intento:
+
+  //Traslación del objeto si se cumple una condición:
   if(mueve)
     glTranslated(-1*movimiento,moveW,-1);
   else
@@ -460,6 +540,7 @@ void display()
 	cambioW = 0;
       }
     }
+  
   tmp = scene_max.x - scene_min.x;
   tmp = aisgl_max(scene_max.y - scene_min.y, tmp);
   tmp = aisgl_max(scene_max.z - scene_min.z, tmp);
@@ -467,126 +548,117 @@ void display()
   
   glScalef(tmp, tmp, tmp);
   
+  //Lo transladamos al punto de referencia.
   glTranslatef(-scene_center.x, -scene_center.y, scene_center.z);
 
-  // if the display list has not been made yet, create a new one and
-  // fill it with scene contents
+  //Si el display no se ha hecho, crea uno nuevo.
   if(scene_list == 0) {
     scene_list = glGenLists(1);
     glNewList(scene_list, GL_COMPILE);
-    // now begin at the root node of the imported data and traverse
-    // the scenegraph by multiplying subsequent local transforms
-    // together on GL's matrix stack.
+    //Mostramos todo desde el nodo padre.
     recursive_render(scene, scene->mRootNode, escala);
     glEndList();
   }
   
   glCallList(scene_list);
-  //recursive_render(scene, scene->mRootNode);
   glutSwapBuffers();
   rota_objeto();
   mueve_objeto();
   }
 
-
+/**
+ *----------------------------------------------------------------------------
+ * Metodo genérico para abortar una ejecución.
+ *----------------------------------------------------------------------------
+ */
 GLboolean abortGLInit(const char* abortMessage)
 {
   printf("ERROR(%s)\n",abortMessage);
-  // quit and return False
   return false;  
 }
-/*
-void ReSizeGLScene(GLsizei width, GLsizei height)				// Resize And Initialize The GL Window
-{
-	if (height==0)								// Prevent A Divide By Zero By
-	{
-		height=1;							// Making Height Equal One
-	}
 
-	glViewport(0, 0, width, height);					// Reset The Current Viewport
-
-	glMatrixMode(GL_PROJECTION);						// Select The Projection Matrix
-	glLoadIdentity();							// Reset The Projection Matrix
-
-	// Calculate The Aspect Ratio Of The Window
-	gluPerspective(45.0f,(GLfloat)width/(GLfloat)height,0.1f,10000.0f);
-
-	glMatrixMode(GL_MODELVIEW);						// Select The Modelview Matrix
-	glLoadIdentity();							// Reset The Modelview Matrix
-}
-*/
-
+/**
+ *----------------------------------------------------------------------------
+ * Esta función es de las 4 más importantes:
+ * 4. CARGA las texturas:
+ * Función para cargar las texturas de un objeto.
+ * Aquí hacemos la magia del mapping de texturas al objeto.
+ *----------------------------------------------------------------------------
+ */
 int LoadGLTextures(const aiScene* scene)
 {
   ILboolean success;
   
-  /* Before calling ilInit() version should be checked. */
+  //Antes de cargar DevIL revisamos la versión. 
   if (ilGetInteger(IL_VERSION_NUM) < IL_VERSION)
     {
       ILint test = ilGetInteger(IL_VERSION_NUM);
-      /// wrong DevIL version ///
-      std::string err_msg = "Wrong DevIL version. Old devil.dll in system32/SysWow64?";
+      std::string err_msg = "Versión de DevIL incorrecta.";
       char* cErr_msg = (char *) err_msg.c_str();
       abortGLInit(cErr_msg);
       return -1;
     }
+
+  //Iniciamos DevIL
+  ilInit(); 
   
-  ilInit(); /* Initialization of DevIL */
-  
-  if (scene->HasTextures()) abortGLInit("Support for meshes with embedded textures is not implemented");
-  
-  /* getTexture Filenames and Numb of Textures */
+  if (scene->HasTextures()) abortGLInit("Posible problema con la carga de texturas");
+
+  //Obtenemos el nombre del archivo y el número de las texturas.
   for (unsigned int m=0; m<scene->mNumMaterials; m++)
     {
       int texIndex = 0;
       aiReturn texFound = AI_SUCCESS;
-      
-      aiString path;	// filename
+
+      //Nombre del archivo.
+      aiString path;   
       
       while (texFound == AI_SUCCESS)
 	{
 	  texFound = scene->mMaterials[m]->GetTexture(aiTextureType_DIFFUSE, texIndex, &path);
-	  textureIdMap[path.data] = NULL; //fill map with textures, pointers still NULL yet
+	  //Llenamos el map con texturas, apuntadores son todavía NULL
+	  textureIdMap[path.data] = NULL;
 	  texIndex++;
 	}
     }
   
   int numTextures = textureIdMap.size();
-  
-  /* array with DevIL image IDs */
+
+  //Arreglo con id imagenes de DevIL
   ILuint* imageIds = NULL;
   imageIds = new ILuint[numTextures];
   
-  /* generate DevIL Image IDs */
-  ilGenImages(numTextures, imageIds); /* Generation of numTextures image names */
-  
-  /* create and fill array with GL texture ids */
+  // Generamos las imágenes con DevIL
+  ilGenImages(numTextures, imageIds);
+
+  //Generamos y llenamos el arreglo el arreglo con texturas de openGL ids
   textureIds = new GLuint[numTextures];
-  glGenTextures(numTextures, textureIds); /* Texture name generation */
-  
-  /* define texture path */
-  //std::string texturepath = "../../../test/models/Obj/";
-  
-  /* get iterator */
+  glGenTextures(numTextures, textureIds);
+    
+  //Obtenemos un iterador sobre cada uno de los id de la textura.
   std::map<std::string, GLuint*>::iterator itr = textureIdMap.begin();
   
   for (int i=0; i<numTextures; i++)
     {
       
       //save IL image ID
-      std::string filename = (*itr).first;  // get filename
-      (*itr).second =  &textureIds[i];	  // save texture id for filename in map
-      itr++;								  // next texture
+      //Obtenemos el nombre del archivo.
+      std::string filename = (*itr).first;
+      //Guardamos el id de la textura.
+      (*itr).second =  &textureIds[i];	 
+      itr++;				
       
       if( filename == "" )
 	{
 	  continue;
 	}
+
+      //Unimos las imagenes que cargamos con DevIL con los id de la textura.
+      ilBindImage(imageIds[i]);
+      //Cargamos la imagen.
+      std::string fileloc = basepath + filename;	
       
-      ilBindImage(imageIds[i]); /* Binding of DevIL image name */
-      std::string fileloc = basepath + filename;	/* Loading of image */
-      
-      //Charactor code translate.
+
       int pos = fileloc.find("\\" );
       if( pos >= 0 )
 	{
@@ -594,52 +666,53 @@ int LoadGLTextures(const aiScene* scene)
 	}
       
       success = ilLoadImage(fileloc.c_str());
-      
-      if (success) /* If no error occured: */
+
+      //Si no ocurren errores:
+      if (success) 
 	{
-	  /* Convert every colour component into
-	     unsigned byte. If your image contains alpha channel you can replace IL_RGB with IL_RGBA */
+	  //Convierte cada columna en un byte unsigned.
+	  //Si tu imagen contiene canales alfa se deben remplanzar IL_RGB con IL_RGBA 
 	  success = ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
 	  
 	  if (!success)
 	    {
-	      /* Error occured */
-	      abortGLInit("Couldn't convert image");
+	      //Ocurrió un error.
+	      abortGLInit("No pudimos cargar la imagen");
 	      return -1;
 	    }
-	  //glGenTextures(numTextures, &textureIds[i]); /* Texture name generation */
-	  glBindTexture(GL_TEXTURE_2D, textureIds[i]); /* Binding of texture name */
-	  //redefine standard texture values
-	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); /* We will use linear
-									       interpolation for magnification filter */
-	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); /* We will use linear
-									       interpolation for minifying filter */
+
+	  glBindTexture(GL_TEXTURE_2D, textureIds[i]); 
+
+	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
+	  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); 
 	  glTexImage2D(GL_TEXTURE_2D, 0, ilGetInteger(IL_IMAGE_BPP), ilGetInteger(IL_IMAGE_WIDTH),
 		       ilGetInteger(IL_IMAGE_HEIGHT), 0, ilGetInteger(IL_IMAGE_FORMAT), GL_UNSIGNED_BYTE,
-		       ilGetData()); /* Texture specification */
+		       ilGetData()); 
 	}
       else
 	{
-	  /* Error occured */
-	  printf("%s(%d)Couldn't load Image: %s\n",__FILE__,__LINE__,fileloc.c_str() );
+	  // Error
+	  printf("%s(%d)No se pudo carga la imagen: %s\n",__FILE__,__LINE__,fileloc.c_str() );
 	}
       
       
     }
-  
-  ilDeleteImages(numTextures, imageIds); /* Because we have already copied image data into texture data
-					    we can release memory used by image. */
-  
-  //Cleanup
+
+  //Limpiamos un poco:
+  ilDeleteImages(numTextures, imageIds); 
   delete [] imageIds;
   imageIds = NULL;
   
-  //return success;
   return true;
 }
 
 
 
+/**
+ *----------------------------------------------------------------------------
+ * Metodo para controlar el comportamiento del resize
+ *----------------------------------------------------------------------------
+ */
 // OpenGL window reshape routine.
 void resize(int w, int h)
 {
@@ -652,6 +725,11 @@ void resize(int w, int h)
 }
 
 
+/**
+ *----------------------------------------------------------------------------
+ * Metodo para controlar el comportamiento del resize
+ *----------------------------------------------------------------------------
+ */
 void reshape(int width, int height)
 {
   const double aspectRatio = (float) width / height, fieldOfView = 45.0;
@@ -659,12 +737,14 @@ void reshape(int width, int height)
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
   gluPerspective(fieldOfView, aspectRatio,
-		 1.0, 1000.0);  /* Znear and Zfar */
+		 1.0, 1000.0);  
   glViewport(0, 0, width, height);
 }
 
 /**
+ *----------------------------------------------------------------------------
  * Son las configuarciones para OpenGL
+ *----------------------------------------------------------------------------
  */
 int InitGL()
 {
@@ -674,16 +754,15 @@ int InitGL()
     }
 
   	glEnable(GL_TEXTURE_2D);
-	glShadeModel(GL_SMOOTH);		 // Enables Smooth Shading
+	glShadeModel(GL_SMOOTH);		
 	glClearColor(1.0f, 1.0f, 1.0f, 0.0f);
-	glClearDepth(1.0f);				// Depth Buffer Setup
-	glEnable(GL_DEPTH_TEST);		// Enables Depth Testing
-	glDepthFunc(GL_LEQUAL);			// The Type Of Depth Test To Do
-	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);	// Really Nice Perspective Calculation
-
+	glClearDepth(1.0f);			
+	glEnable(GL_DEPTH_TEST);		
+	glDepthFunc(GL_LEQUAL);			
+	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);	
 
 	glEnable(GL_LIGHTING);
-	glEnable(GL_LIGHT0);    // Uses default lighting parameters
+	glEnable(GL_LIGHT0);    
 	glLightModeli(GL_LIGHT_MODEL_TWO_SIDE, GL_TRUE);
 	glEnable(GL_NORMALIZE);
 
@@ -696,6 +775,11 @@ int InitGL()
   
 }
 
+/**
+ *----------------------------------------------------------------------------
+ * Las funcionalidades del teclado para rotar y detener el modelo
+ *----------------------------------------------------------------------------
+ */
 // Keyboard input processing routine.
 void keyInput(unsigned char key, int x, int y)
 {
@@ -744,7 +828,11 @@ void keyInput(unsigned char key, int x, int y)
    }
 }
 
-// Callback routine for non-ASCII key entry.
+/**
+ *----------------------------------------------------------------------------
+ * Funcionalidades de teclas especiales.
+ *----------------------------------------------------------------------------
+ */
 void specialKeyInput(int key, int x, int y)
 {
    if (key == GLUT_KEY_RIGHT) 
@@ -767,15 +855,16 @@ void specialKeyInput(int key, int x, int y)
        anguloC -= 5.0;
        if (anguloC < 0.0) anguloC += 360.0;
      }
-   //glutPostRedisplay();
 }
 
 
-
+/**
+ *----------------------------------------------------------------------------
+ * Función principal del programa.
+ *----------------------------------------------------------------------------
+ */
 int main(int argc, char **argv)
 {
-  //bool b = Import3DFromFile("Sony_DSC_W170_obj.obj");
-  //bool b = Import3DFromFile("avioneta.obj");
   
   aiLogStream stream;
   ilInit(); //Inicializamos DevIL (OpenIL)
